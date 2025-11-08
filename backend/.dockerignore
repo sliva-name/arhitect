@@ -1,4 +1,12 @@
-*
+# Ignore everything except infrastructure files
+vendor/
+node_modules/
+.env
+.git/
+*.md
+*.log
+
+# Keep these files
 !.dockerignore
 !Dockerfile
 !docker-entrypoint.sh

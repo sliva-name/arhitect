@@ -4,8 +4,8 @@ RUN apk add --no-cache git
 
 WORKDIR /app
 
-COPY docker-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+# Copy entrypoint script separately to avoid .dockerignore issues
+COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 EXPOSE 3000
 

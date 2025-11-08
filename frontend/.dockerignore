@@ -1,4 +1,14 @@
-*
+# Ignore everything except infrastructure files
+node_modules/
+.nuxt/
+.output/
+dist/
+.env
+.git/
+*.md
+*.log
+
+# Keep these files
 !.dockerignore
 !Dockerfile
 !docker-entrypoint.sh
