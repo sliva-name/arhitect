@@ -28,6 +28,7 @@ services:
     working_dir: /var/www/html
     volumes:
       - ../backend:/var/www/html
+      - backend-vendor:/var/www/html/vendor
     networks:
       - app-network
     environment:
@@ -44,6 +45,13 @@ services:
     depends_on:
       - db
     restart: unless-stopped
+    entrypoint: >
+      sh -c "
+      composer install --no-interaction --prefer-dist &&
+      if [ ! -f .env ]; then cp .env.example .env; fi &&
+      php artisan key:generate --force --no-interaction || true &&
+      php artisan serve --host=0.0.0.0 --port=8000
+      "
 
   frontend:
     build:
@@ -94,3 +102,4 @@ networks:
 
 volumes:
   db-data:
+  backend-vendor:

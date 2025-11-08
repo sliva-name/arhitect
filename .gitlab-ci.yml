@@ -10,10 +10,12 @@ variables:
   COMPOSER_CACHE_DIR: "$CI_PROJECT_DIR/.composer-cache"
 
 cache:
-  key: ${CI_COMMIT_REF_SLUG}
+  key:
+    files:
+      - backend/composer.lock
   paths:
     - .composer-cache/
-    - vendor/
+    - backend/vendor/
 
 before_script:
   - cd backend
@@ -25,7 +27,7 @@ install:dependencies:
     - composer install --prefer-dist --no-ansi --no-interaction --no-progress --no-scripts
   artifacts:
     paths:
-      - vendor/
+      - backend/vendor/
     expire_in: 1 hour
 
 lint:pint:
@@ -33,6 +35,9 @@ lint:pint:
   image: php:${PHP_VERSION}
   dependencies:
     - install:dependencies
+  before_script:
+    - cd backend
+    - docker-php-ext-install zip
   script:
     - ./vendor/bin/pint --test
   allow_failure: false
@@ -42,12 +47,14 @@ analyze:phpstan:
   image: php:${PHP_VERSION}
   dependencies:
     - install:dependencies
+  before_script:
+    - cd backend
+    - docker-php-ext-install zip
   script:
-    - ./vendor/bin/phpstan analyse --error-format=gitlab > phpstan-report.json || true
-    - ./vendor/bin/phpstan analyse
+    - ./vendor/bin/phpstan analyse --error-format=gitlab > phpstan-report.json
   artifacts:
     reports:
-      codequality: phpstan-report.json
+      codequality: backend/phpstan-report.json
     expire_in: 1 week
   allow_failure: false
 
@@ -65,6 +72,10 @@ test:unit:
     DB_DATABASE: laravel_test
     DB_USERNAME: root
     DB_PASSWORD: root
+  before_script:
+    - cd backend
+    - apt-get update && apt-get install -y libzip-dev libpng-dev libonig-dev libxml2-dev
+    - docker-php-ext-install pdo_mysql zip mbstring exif pcntl bcmath gd
   script:
     - cp .env.testing .env
     - php artisan key:generate
@@ -72,10 +83,10 @@ test:unit:
   coverage: '/^\s*Lines:\s*\d+.\d+\%/'
   artifacts:
     reports:
-      junit: tests/reports/junit.xml
+      junit: backend/tests/reports/junit.xml
       coverage_report:
         coverage_format: cobertura
-        path: tests/reports/cobertura.xml
+        path: backend/tests/reports/cobertura.xml
     expire_in: 1 week
 
 build:production:
@@ -83,6 +94,9 @@ build:production:
   image: php:${PHP_VERSION}
   dependencies:
     - install:dependencies
+  before_script:
+    - cd backend
+    - docker-php-ext-install zip
   script:
     - composer install --prefer-dist --no-ansi --no-interaction --no-progress --no-dev --optimize-autoloader
     - php artisan config:cache
@@ -90,8 +104,8 @@ build:production:
     - php artisan view:cache
   artifacts:
     paths:
-      - vendor/
-      - bootstrap/cache/
+      - backend/vendor/
+      - backend/bootstrap/cache/
     expire_in: 1 week
   only:
     - master

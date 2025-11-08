@@ -9,7 +9,6 @@ RUN apt-get update && apt-get install -y \
     zip \
     unzip \
     libzip-dev \
-    libpq-dev \
     && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
@@ -20,7 +19,7 @@ WORKDIR /var/www/html
 
 COPY composer.json composer.lock* ./
 
-RUN composer install --no-interaction --no-scripts --no-autoloader --prefer-dist || composer install --no-interaction --no-scripts --no-autoloader --prefer-dist --ignore-platform-reqs
+RUN composer install --no-interaction --no-scripts --no-autoloader --prefer-dist
 
 COPY . .
 
