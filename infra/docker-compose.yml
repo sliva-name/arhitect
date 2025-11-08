@@ -45,13 +45,8 @@ services:
     depends_on:
       - db
     restart: unless-stopped
-    entrypoint: >
-      sh -c "
-      composer install --no-interaction --prefer-dist &&
-      if [ ! -f .env ]; then cp .env.example .env; fi &&
-      php artisan key:generate --force --no-interaction || true &&
-      php artisan serve --host=0.0.0.0 --port=8000
-      "
+    entrypoint: ["/bin/sh", "/var/www/html/docker-entrypoint.sh"]
+    command: ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
 
   frontend:
     build:
@@ -61,7 +56,7 @@ services:
     working_dir: /app
     volumes:
       - ../frontend:/app
-      - /app/node_modules
+      - frontend-node-modules:/app/node_modules
     networks:
       - app-network
     labels:
@@ -70,6 +65,8 @@ services:
       - "traefik.http.routers.frontend.entrypoints=web"
       - "traefik.http.services.frontend.loadbalancer.server.port=3000"
     restart: unless-stopped
+    entrypoint: ["/bin/sh", "/app/docker-entrypoint.sh"]
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
 
   db:
     image: mysql:8.0
@@ -103,3 +100,4 @@ networks:
 volumes:
   db-data:
   backend-vendor:
+  frontend-node-modules:

@@ -17,16 +17,6 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
-COPY composer.json composer.lock* ./
-
-RUN composer install --no-interaction --no-scripts --no-autoloader --prefer-dist
-
-COPY . .
-
-RUN composer dump-autoload --optimize && \
-    ([ -d storage ] && chown -R www-data:www-data storage && chmod -R 775 storage || true) && \
-    ([ -d bootstrap/cache ] && chown -R www-data:www-data bootstrap/cache && chmod -R 775 bootstrap/cache || true)
-
 EXPOSE 8000
 
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+CMD ["php", "-S", "0.0.0.0:8000", "-t", "public"]

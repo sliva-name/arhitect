@@ -9,26 +9,36 @@ This file provides guidance to Verdent when working with code in this repository
 
 ## Commands
 
-### Infrastructure
+### Project Initialization
+- `./init.sh` (Linux/Mac) or `init.bat` (Windows) - Initialize entire project
 - `cd infra && docker-compose up -d` - Start all services
 - `cd infra && docker-compose down` - Stop all services
 - `cd infra && docker-compose logs -f [service]` - View logs for specific service
-- `cd infra && docker-compose ps` - List running containers
 
-### Backend (Laravel)
-- `cd backend && composer install` - Install dependencies
-- `cd backend && composer pint` - Run code style fixer
-- `cd backend && composer phpstan` - Run static analysis
-- `cd backend && php artisan test` - Run tests
-- `cd backend && php artisan migrate` - Run database migrations
-- `cd backend && php artisan serve` - Start development server (inside container runs automatically)
+### Backend (Laravel) - After Initialization
+- `cd infra && docker-compose exec backend composer install` - Install dependencies
+- `cd infra && docker-compose exec backend php artisan migrate` - Run migrations
+- `cd infra && docker-compose exec backend ./vendor/bin/pint` - Run code style fixer
+- `cd infra && docker-compose exec backend ./vendor/bin/phpstan analyse` - Run static analysis
+- `cd infra && docker-compose exec backend php artisan test` - Run tests
 
-### Frontend (Nuxt)
-- `cd frontend && npm install` - Install dependencies
-- `cd frontend && npm run dev` - Start development server
-- `cd frontend && npm run build` - Build for production
-- `cd frontend && npm run lint` - Run ESLint
-- `cd frontend && npm run lint:fix` - Fix linting issues
+### Frontend (Nuxt) - After Initialization
+- `cd infra && docker-compose exec frontend npm install` - Install dependencies
+- `cd infra && docker-compose exec frontend npm run build` - Build for production
+- `cd infra && docker-compose exec frontend npm run dev` - Start dev server (already running)
+
+### Manual Project Creation
+**Backend (if you want to recreate Laravel from scratch):**
+```bash
+cd infra
+docker-compose run --rm backend sh -c "composer create-project laravel/laravel . && php artisan key:generate"
+```
+
+**Frontend (if you want to recreate Nuxt from scratch):**
+```bash
+cd infra
+docker-compose run --rm frontend sh -c "npx nuxi@latest init . --force && npm install"
+```
 
 ## Architecture
 
@@ -36,8 +46,8 @@ This file provides guidance to Verdent when working with code in this repository
 
 ```mermaid
 graph TD
-    A[Traefik Reverse Proxy] --> B[Frontend - Nuxt 4]
-    A --> C[Backend - Laravel 12]
+    A[Traefik Reverse Proxy] --> B[Frontend - Nuxt Auto-Init]
+    A --> C[Backend - Laravel Auto-Init]
     C --> D[MySQL Database]
     C --> E[Redis Cache]
     
@@ -53,18 +63,19 @@ graph TD
   - Routes `api.localhost` → Backend (port 8000)
   - Dashboard available at `localhost:8080`
 
-- **Frontend (Nuxt 4)**: Vue.js framework for modern web applications
-  - Located in `/frontend`
-  - TypeScript support enabled
-  - ESLint configured for code quality
-  - Communicates with backend via API calls
+- **Backend (Laravel - Auto-initialized)**: PHP framework for API
+  - Located in `/backend` (empty initially)
+  - Auto-initializes on first `docker-compose up`
+  - PHP 8.3 with necessary extensions
+  - Automatically installs Pint + PHPStan on init
+  - **Important**: Laravel project files are NOT tracked in git by default
 
-- **Backend (Laravel 12)**: PHP framework for API and business logic
-  - Located in `/backend`
-  - PHP 8.3+ required
-  - Quality tools: Pint (code style), PHPStan (static analysis)
-  - Database: MySQL 8.0
-  - Cache: Redis 7
+- **Frontend (Nuxt - Auto-initialized)**: Vue.js framework
+  - Located in `/frontend` (empty initially)
+  - Auto-initializes on first `docker-compose up`
+  - Node.js 20 Alpine
+  - Latest Nuxt version via `npx nuxi`
+  - **Important**: Nuxt project files are NOT tracked in git by default
 
 - **Infrastructure**: Docker Compose orchestration
   - Located in `/infra`
@@ -73,14 +84,22 @@ graph TD
 
 ### Key Data Flows
 
-1. **HTTP Request Flow**:
+1. **Initialization Flow**:
+   - User runs `init.sh` or `init.bat`
+   - Docker containers build
+   - Traefik, DB, Redis start first
+   - Backend container runs `docker-entrypoint.sh` → creates Laravel project if missing
+   - Frontend container runs `docker-entrypoint.sh` → creates Nuxt project if missing
+
+2. **HTTP Request Flow**:
    - Browser → Traefik → Frontend (for UI) or Backend (for API)
    - Backend → MySQL (for data persistence)
    - Backend → Redis (for caching/sessions)
 
-2. **Development Workflow**:
+3. **Development Workflow**:
    - Code changes → Hot reload (both frontend and backend)
-   - Git commit → GitLab CI pipeline → Lint → Analyze → Test → Build
+   - Changes persist in mounted volumes
+   - Dependencies in separate volumes (vendor/, node_modules/)
 
 ### External Dependencies
 
@@ -93,145 +112,176 @@ graph TD
 
 ### Development Entry Points
 
-- **Frontend**: `frontend/app.vue` - Main application component
-- **Backend**: Laravel follows MVC pattern
+- **Backend**: Auto-generated by Laravel installer on first run
   - Routes: `backend/routes/`
   - Controllers: `backend/app/Http/Controllers/`
   - Models: `backend/app/Models/`
 
+- **Frontend**: Auto-generated by Nuxt CLI on first run
+  - Pages: `frontend/pages/`
+  - Components: `frontend/components/`
+  - Layouts: `frontend/layouts/`
+
 ## Key Rules & Constraints
 
-### Project Structure [inferred]
-- **Three-tier architecture**: Infrastructure, Backend, Frontend separation
-- **Monorepo structure**: All services in single repository
-- **Docker-first approach**: All services run in containers
+### Project Structure [Critical]
+- **Backend and Frontend folders are NOT pre-populated**
+- **Projects are created automatically on first Docker container startup**
+- **Application code is NOT tracked in git by default** (see .gitignore)
+- Only infrastructure files (Dockerfile, entrypoint scripts) are tracked
 
-### Backend (Laravel)
-- PHP version: 8.3+
-- Laravel version: 12.x
-- Code style must pass Pint validation
-- Static analysis must pass PHPStan level 5
-- All code must follow PSR-12 standards [inferred from Pint config]
-- Use short array syntax [from pint.json:4]
-- Single quotes for strings [from pint.json:77]
-- No unused imports allowed [from pint.json:67]
+### Backend (Laravel) [inferred from auto-init]
+- PHP version: 8.3
+- Latest stable Laravel version via Composer
+- Auto-installs: laravel/pint, phpstan/phpstan, nunomaduro/larastan
+- Uses PHP built-in server (`php artisan serve`) for development
+- Volume for vendor/ directory prevents overwrite
 
-### Frontend (Nuxt)
+### Frontend (Nuxt) [inferred from auto-init]
 - Node version: 20 (Alpine)
-- Nuxt version: 4.x (using 3.14.0 as latest stable)
-- TypeScript enabled
-- ESLint must pass for all code
-- API base URL configurable via environment variable
-
-### GitLab CI/CD
-- Pipeline stages: install → lint → analyze → test → build
-- All quality checks must pass (Pint, PHPStan)
-- Tests must pass before merge
-- Production builds only on master/main/production branches
+- Latest Nuxt version via `npx nuxi@latest init`
+- Development server runs with hot-reload
+- Volume for node_modules/ prevents overwrite
 
 ### Docker & Traefik
 - All services in `app-network` bridge network
 - Traefik routes based on Host headers
-- Persistent volumes for database data
+- Persistent volumes for database data, vendor/, and node_modules/
 - Auto-restart enabled for all services
+- Entrypoint scripts handle initialization
+
+### GitLab CI/CD
+- Pipeline expects Laravel project structure in backend/
+- Stages: install → lint → analyze → test → build
+- Must run after Laravel project initialization
+- Paths are relative to backend/ directory
 
 ## Development Hints
 
-### Adding a New API Endpoint (Backend)
+### First Time Setup
 
-1. Create route in `backend/routes/api.php`:
-   ```php
-   Route::get('/example', [ExampleController::class, 'index']);
-   ```
-
-2. Create controller:
-   ```bash
-   php artisan make:controller ExampleController
-   ```
-
-3. Implement logic in `backend/app/Http/Controllers/ExampleController.php`
-
-4. Run quality checks:
-   ```bash
-   composer pint
-   composer phpstan
-   php artisan test
-   ```
-
-### Adding a New Page (Frontend)
-
-1. Create page in `frontend/pages/` directory (auto-routing)
-   - Example: `frontend/pages/about.vue` → accessible at `/about`
-
-2. Or create component in `frontend/components/`
-
-3. Use runtime config for API calls:
-   ```typescript
-   const config = useRuntimeConfig()
-   const apiBase = config.public.apiBase
-   ```
-
-4. Run linting:
-   ```bash
-   npm run lint:fix
-   ```
-
-### Modifying CI/CD Pipeline
-
-- Edit `.gitlab-ci.yml` in repository root
-- Pipeline runs on every push
-- Key stages: install → lint → analyze → test → build
-- Cache enabled for composer dependencies
-- Test coverage reports generated automatically
-
-### Extending Subsystems
-
-**Adding a new service to Docker Compose:**
-
-1. Edit `infra/docker-compose.yml`
-2. Add service definition with:
-   - Image or build context
-   - Network: `app-network`
-   - Volumes (if needed)
-   - Environment variables
-   - Traefik labels (if exposing to web)
-
-3. Update `.env.example` with new variables
-
-**Modifying Traefik routing:**
-
-1. Edit service labels in `infra/docker-compose.yml`
-2. Update `traefik.http.routers.[name].rule` for routing
-3. Update `traefik.http.services.[name].loadbalancer.server.port` for target port
-
-### Initial Setup
-
-1. Copy environment files:
-   ```bash
-   cp infra/.env.example infra/.env
-   cp frontend/.env.example frontend/.env
-   ```
-
-2. Initialize Laravel (after first docker-compose up):
-   ```bash
-   docker exec -it backend composer install
-   docker exec -it backend php artisan key:generate
-   docker exec -it backend php artisan migrate
-   ```
-
-3. Initialize Nuxt:
-   ```bash
-   docker exec -it frontend npm install
-   ```
-
-4. Access services:
+1. **Clone repository**
+2. **Run initialization script**:
+   - Windows: `init.bat`
+   - Linux/Mac: `chmod +x init.sh && ./init.sh`
+3. **Wait for auto-initialization** (Laravel + Nuxt projects will be created)
+4. **Access applications**:
    - Frontend: http://localhost
-   - Backend API: http://api.localhost
-   - Traefik Dashboard: http://localhost:8080
+   - Backend: http://api.localhost
+   - Traefik: http://localhost:8080
+
+### Recreating Projects from Scratch
+
+**Delete existing projects:**
+```bash
+# Stop containers
+cd infra && docker-compose down
+
+# Remove project files (keeps infrastructure)
+rm -rf backend/* frontend/*
+# Or on Windows: rmdir /s backend frontend (then recreate folders)
+
+# Restart - projects will auto-initialize
+docker-compose up -d
+```
+
+### Adding Dependencies
+
+**Backend (Laravel):**
+```bash
+cd infra
+docker-compose exec backend composer require vendor/package
+docker-compose exec backend composer require --dev vendor/dev-package
+```
+
+**Frontend (Nuxt):**
+```bash
+cd infra
+docker-compose exec frontend npm install package-name
+docker-compose exec frontend npm install -D dev-package-name
+```
+
+### Running Commands
+
+**Backend:**
+```bash
+cd infra
+
+# Artisan commands
+docker-compose exec backend php artisan make:controller ExampleController
+docker-compose exec backend php artisan make:model Example -m
+docker-compose exec backend php artisan migrate
+docker-compose exec backend php artisan db:seed
+
+# Code quality
+docker-compose exec backend ./vendor/bin/pint
+docker-compose exec backend ./vendor/bin/phpstan analyse
+
+# Tests
+docker-compose exec backend php artisan test
+```
+
+**Frontend:**
+```bash
+cd infra
+
+# Nuxt commands (after project init)
+docker-compose exec frontend npm run build
+docker-compose exec frontend npm run generate
+
+# Add pages/components
+docker-compose exec frontend npx nuxi add page about
+docker-compose exec frontend npx nuxi add component MyComponent
+```
 
 ### Troubleshooting
 
-- **Traefik not routing**: Check service labels and ensure `traefik.enable=true`
-- **Backend 500 errors**: Check Laravel logs in `backend/storage/logs/`
-- **Frontend not hot-reloading**: Ensure `vite.server.watch.usePolling: true` in nuxt.config.ts
-- **Database connection failed**: Verify MySQL container is running and environment variables are correct
+- **"Project not initialized"**: Wait ~15-30 seconds after first `docker-compose up`, check logs: `docker-compose logs backend` or `docker-compose logs frontend`
+- **"vendor/autoload.php not found"**: Run `docker-compose restart backend` to trigger entrypoint
+- **"node_modules missing"**: Run `docker-compose restart frontend` to trigger entrypoint
+- **Port conflicts**: Change ports in `docker-compose.yml` (default: 80, 443, 8080, 3306, 6379)
+- **Traefik not routing**: Ensure containers are running: `docker-compose ps`
+- **Database connection failed**: Check MySQL is ready: `docker-compose logs db`
+
+### Switching Laravel/Nuxt Versions
+
+**Laravel (backend/docker-entrypoint.sh):**
+```bash
+# Edit line: composer create-project laravel/laravel . --no-interaction --prefer-dist
+# To: composer create-project laravel/laravel:^11.0 . --no-interaction --prefer-dist
+```
+
+**Nuxt (frontend/docker-entrypoint.sh):**
+```bash
+# Edit line: npx nuxi@latest init . --no-install --force
+# To: npx nuxi@3.11.0 init . --no-install --force
+```
+
+### Committing Code
+
+By default, backend/* and frontend/* are ignored. To track your code:
+
+1. **Edit .gitignore**: Remove the ignore rules for backend/* and frontend/*
+2. **Keep infrastructure files**: Ensure Dockerfile and entrypoint scripts remain
+3. **Commit application code**:
+```bash
+git add backend/ frontend/
+git commit -m "Add Laravel and Nuxt applications"
+```
+
+### Working with GitLab CI
+
+GitLab CI pipeline requires Laravel project structure:
+
+1. **Initialize project first** (via Docker)
+2. **Commit Laravel files** to repository
+3. **Pipeline will run** on push (install → lint → analyze → test → build)
+
+Alternatively, run CI locally for testing:
+```bash
+cd backend
+composer install
+./vendor/bin/pint --test
+./vendor/bin/phpstan analyse
+php artisan test
+```
