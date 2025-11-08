@@ -1,0 +1,44 @@
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci --prefer-offline --no-audit
+
+# Copy source code
+COPY . .
+
+# Build for production
+RUN npm run build
+
+# Production stage
+FROM node:20-alpine
+
+RUN apk add --no-cache su-exec
+
+# Build arguments for user ID and group ID
+ARG USER_ID=1000
+ARG GROUP_ID=1000
+
+# Create user with specified UID/GID
+RUN addgroup -g ${GROUP_ID} appuser || true && \
+    adduser -D -u ${USER_ID} -G appuser appuser || true
+
+WORKDIR /app
+
+# Copy built application from builder
+COPY --from=builder --chown=${USER_ID}:${GROUP_ID} /app/.output ./.output
+COPY --from=builder --chown=${USER_ID}:${GROUP_ID} /app/package*.json ./
+
+# Set ownership
+RUN chown -R ${USER_ID}:${GROUP_ID} /app || true
+
+EXPOSE 3000
+
+USER appuser
+
+CMD ["node", ".output/server/index.mjs"]
+
