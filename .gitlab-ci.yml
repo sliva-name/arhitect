@@ -1,0 +1,99 @@
+stages:
+  - install
+  - lint
+  - analyze
+  - test
+  - build
+
+variables:
+  PHP_VERSION: "8.3"
+  COMPOSER_CACHE_DIR: "$CI_PROJECT_DIR/.composer-cache"
+
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - .composer-cache/
+    - vendor/
+
+before_script:
+  - cd backend
+
+install:dependencies:
+  stage: install
+  image: composer:latest
+  script:
+    - composer install --prefer-dist --no-ansi --no-interaction --no-progress --no-scripts
+  artifacts:
+    paths:
+      - backend/vendor/
+    expire_in: 1 hour
+
+lint:pint:
+  stage: lint
+  image: php:${PHP_VERSION}
+  dependencies:
+    - install:dependencies
+  script:
+    - ./vendor/bin/pint --test
+  allow_failure: false
+
+analyze:phpstan:
+  stage: analyze
+  image: php:${PHP_VERSION}
+  dependencies:
+    - install:dependencies
+  script:
+    - ./vendor/bin/phpstan analyse --error-format=gitlab > phpstan-report.json || true
+    - ./vendor/bin/phpstan analyse
+  artifacts:
+    reports:
+      codequality: backend/phpstan-report.json
+    expire_in: 1 week
+  allow_failure: false
+
+test:unit:
+  stage: test
+  image: php:${PHP_VERSION}
+  dependencies:
+    - install:dependencies
+  services:
+    - mysql:8.0
+  variables:
+    MYSQL_DATABASE: laravel_test
+    MYSQL_ROOT_PASSWORD: root
+    DB_HOST: mysql
+    DB_DATABASE: laravel_test
+    DB_USERNAME: root
+    DB_PASSWORD: root
+  script:
+    - cp .env.testing .env
+    - php artisan key:generate
+    - php artisan test
+  coverage: '/^\s*Lines:\s*\d+.\d+\%/'
+  artifacts:
+    reports:
+      junit: backend/tests/reports/junit.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: backend/tests/reports/cobertura.xml
+    expire_in: 1 week
+
+build:production:
+  stage: build
+  image: php:${PHP_VERSION}
+  dependencies:
+    - install:dependencies
+  script:
+    - composer install --prefer-dist --no-ansi --no-interaction --no-progress --no-dev --optimize-autoloader
+    - php artisan config:cache
+    - php artisan route:cache
+    - php artisan view:cache
+  artifacts:
+    paths:
+      - backend/vendor/
+      - backend/bootstrap/cache/
+    expire_in: 1 week
+  only:
+    - master
+    - main
+    - production
