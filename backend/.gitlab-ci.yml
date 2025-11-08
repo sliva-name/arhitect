@@ -12,13 +12,10 @@ variables:
 cache:
   key:
     files:
-      - backend/composer.lock
+      - composer.lock
   paths:
     - .composer-cache/
-    - backend/vendor/
-
-before_script:
-  - cd backend
+    - vendor/
 
 install:dependencies:
   stage: install
@@ -27,7 +24,7 @@ install:dependencies:
     - composer install --prefer-dist --no-ansi --no-interaction --no-progress --no-scripts
   artifacts:
     paths:
-      - backend/vendor/
+      - vendor/
     expire_in: 1 hour
 
 lint:pint:
@@ -36,7 +33,6 @@ lint:pint:
   dependencies:
     - install:dependencies
   before_script:
-    - cd backend
     - docker-php-ext-install zip
   script:
     - ./vendor/bin/pint --test
@@ -48,13 +44,12 @@ analyze:phpstan:
   dependencies:
     - install:dependencies
   before_script:
-    - cd backend
     - docker-php-ext-install zip
   script:
-    - ./vendor/bin/phpstan analyse --error-format=gitlab > phpstan-report.json
+    - ./vendor/bin/phpstan analyse --memory-limit=512M --error-format=gitlab > phpstan-report.json
   artifacts:
     reports:
-      codequality: backend/phpstan-report.json
+      codequality: phpstan-report.json
     expire_in: 1 week
   allow_failure: false
 
@@ -73,20 +68,25 @@ test:unit:
     DB_USERNAME: root
     DB_PASSWORD: root
   before_script:
-    - cd backend
     - apt-get update && apt-get install -y libzip-dev libpng-dev libonig-dev libxml2-dev
     - docker-php-ext-install pdo_mysql zip mbstring exif pcntl bcmath gd
+    # Install PCOV for code coverage
+    - pecl install pcov
+    - docker-php-ext-enable pcov
+    # Ensure reports directory exists
+    - mkdir -p tests/reports
   script:
-    - cp .env.testing .env
+    - cp .env.testing .env || true
     - php artisan key:generate
-    - php artisan test
+    # Run tests with coverage
+    - php artisan test --coverage --min=0
   coverage: '/^\s*Lines:\s*\d+.\d+\%/'
   artifacts:
     reports:
-      junit: backend/tests/reports/junit.xml
+      junit: tests/reports/junit.xml
       coverage_report:
         coverage_format: cobertura
-        path: backend/tests/reports/cobertura.xml
+        path: tests/reports/cobertura.xml
     expire_in: 1 week
 
 build:production:
@@ -95,7 +95,6 @@ build:production:
   dependencies:
     - install:dependencies
   before_script:
-    - cd backend
     - docker-php-ext-install zip
   script:
     - composer install --prefer-dist --no-ansi --no-interaction --no-progress --no-dev --optimize-autoloader
@@ -104,10 +103,11 @@ build:production:
     - php artisan view:cache
   artifacts:
     paths:
-      - backend/vendor/
-      - backend/bootstrap/cache/
+      - vendor/
+      - bootstrap/cache/
     expire_in: 1 week
   only:
     - master
     - main
     - production
+

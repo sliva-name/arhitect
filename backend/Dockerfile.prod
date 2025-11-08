@@ -1,0 +1,48 @@
+FROM php:8.3-fpm
+
+# Build arguments for user ID and group ID
+ARG USER_ID=1000
+ARG GROUP_ID=1000
+
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    libpng-dev \
+    libonig-dev \
+    libxml2-dev \
+    zip \
+    unzip \
+    libzip-dev \
+    dos2unix \
+    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip opcache \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create user with specified UID/GID
+RUN groupadd -g ${GROUP_ID} appuser || true && \
+    useradd -u ${USER_ID} -g appuser -m -s /bin/bash appuser || true
+
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+WORKDIR /var/www/html
+
+# Copy opcache configuration
+COPY docker-opcache.ini /usr/local/etc/php/conf.d/opcache.ini
+
+# Copy PHP-FPM configuration
+COPY docker-php-fpm.conf /usr/local/etc/php-fpm.d/www.conf
+
+# Set ownership
+RUN chown -R ${USER_ID}:${GROUP_ID} /var/www/html || true
+
+# Copy entrypoint script
+COPY docker-entrypoint-prod.sh /tmp/docker-entrypoint-prod.sh
+RUN dos2unix /tmp/docker-entrypoint-prod.sh && \
+    chmod +x /tmp/docker-entrypoint-prod.sh && \
+    mv /tmp/docker-entrypoint-prod.sh /usr/local/bin/docker-entrypoint-prod.sh
+
+EXPOSE 9000
+
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint-prod.sh"]
+CMD ["php-fpm"]
+
