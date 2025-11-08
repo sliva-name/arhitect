@@ -1,18 +1,17 @@
 #!/bin/sh
-set -e
 
 if [ ! -f "package.json" ]; then
-    echo "🚀 Initializing new Nuxt project..."
-    npx nuxi@latest init . --no-install --force
+    echo "Initializing new Nuxt project..."
+    npx nuxi@latest init . --no-install --force || exit 1
     
-    npm install
+    npm install || exit 1
     
-    echo "✅ Nuxt project initialized successfully!"
+    echo "Nuxt project initialized successfully!"
 fi
 
 if [ ! -d "node_modules" ]; then
-    echo "📦 Installing dependencies..."
-    npm install
+    echo "Installing dependencies..."
+    npm install || exit 1
 fi
 
 exec "$@"
