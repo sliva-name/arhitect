@@ -25,7 +25,7 @@ install:dependencies:
     - composer install --prefer-dist --no-ansi --no-interaction --no-progress --no-scripts
   artifacts:
     paths:
-      - backend/vendor/
+      - vendor/
     expire_in: 1 hour
 
 lint:pint:
@@ -47,7 +47,7 @@ analyze:phpstan:
     - ./vendor/bin/phpstan analyse
   artifacts:
     reports:
-      codequality: backend/phpstan-report.json
+      codequality: phpstan-report.json
     expire_in: 1 week
   allow_failure: false
 
@@ -72,10 +72,10 @@ test:unit:
   coverage: '/^\s*Lines:\s*\d+.\d+\%/'
   artifacts:
     reports:
-      junit: backend/tests/reports/junit.xml
+      junit: tests/reports/junit.xml
       coverage_report:
         coverage_format: cobertura
-        path: backend/tests/reports/cobertura.xml
+        path: tests/reports/cobertura.xml
     expire_in: 1 week
 
 build:production:
@@ -90,8 +90,8 @@ build:production:
     - php artisan view:cache
   artifacts:
     paths:
-      - backend/vendor/
-      - backend/bootstrap/cache/
+      - vendor/
+      - bootstrap/cache/
     expire_in: 1 week
   only:
     - master

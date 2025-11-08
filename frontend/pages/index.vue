@@ -1,7 +1,7 @@
 <template>
   <div>
-    <h1>Welcome to Nuxt 3</h1>
-    <p>API Base: {{ config.public.apiBase }}</p>
+    <h1>Home Page</h1>
+    <p>This is the home page using Nuxt auto-routing</p>
   </div>
 </template>
 

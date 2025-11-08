@@ -1,4 +1,4 @@
-FROM php:8.3-fpm
+FROM php:8.3-cli
 
 RUN apt-get update && apt-get install -y \
     git \
@@ -10,21 +10,24 @@ RUN apt-get update && apt-get install -y \
     unzip \
     libzip-dev \
     libpq-dev \
-    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
+    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
-
 WORKDIR /var/www/html
+
+COPY composer.json composer.lock* ./
+
+RUN composer install --no-interaction --no-scripts --no-autoloader --prefer-dist || composer install --no-interaction --no-scripts --no-autoloader --prefer-dist --ignore-platform-reqs
 
 COPY . .
 
-RUN composer install --no-interaction --optimize-autoloader --no-dev || true
-
-RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 755 /var/www/html/storage || true
+RUN composer dump-autoload --optimize && \
+    ([ -d storage ] && chown -R www-data:www-data storage && chmod -R 775 storage || true) && \
+    ([ -d bootstrap/cache ] && chown -R www-data:www-data bootstrap/cache && chmod -R 775 bootstrap/cache || true)
 
 EXPOSE 8000
 
-CMD php artisan serve --host=0.0.0.0 --port=8000
+CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
