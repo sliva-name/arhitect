@@ -22,6 +22,10 @@ fi
 mkdir -p letsencrypt
 chmod 600 letsencrypt
 
+# Create backups directory
+mkdir -p backups
+chmod 755 backups
+
 # Build and start services
 echo "Building production images..."
 docker-compose -f docker-compose.yml -f docker-compose.prod.yml build

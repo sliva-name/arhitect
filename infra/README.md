@@ -17,7 +17,7 @@ chmod +x init.sh
 
 1. **Environment Setup**: Creates `.env` file in `infra/` directory
 2. **Docker Build**: Builds all necessary containers
-3. **Services Start**: Starts Traefik, MySQL, and Redis
+3. **Services Start**: Starts Traefik, PostgreSQL, and Redis
 4. **Backend Init**: Initializes a fresh Laravel project (if not exists)
 5. **Frontend Init**: Initializes a fresh Nuxt project (if not exists)
 
@@ -47,7 +47,7 @@ docker-compose exec frontend npm install
 - **Frontend**: http://localhost
 - **Backend API**: http://api.localhost
 - **Traefik Dashboard**: http://localhost:8080
-- **MySQL**: localhost:3306 (user: laravel, password: secret)
+- **PostgreSQL**: localhost:5432 (user: laravel, password: secret, database: laravel)
 - **Redis**: localhost:6379
 
 ## Useful Commands

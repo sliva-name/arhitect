@@ -48,7 +48,7 @@ docker-compose run --rm frontend sh -c "npx nuxi@latest init . --force && npm in
 graph TD
     A[Traefik Reverse Proxy] --> B[Frontend - Nuxt Auto-Init]
     A --> C[Backend - Laravel Auto-Init]
-    C --> D[MySQL Database]
+    C --> D[PostgreSQL Database]
     C --> E[Redis Cache]
     
     style A fill:#f9f,stroke:#333,stroke-width:2px
@@ -93,7 +93,7 @@ graph TD
 
 2. **HTTP Request Flow**:
    - Browser → Traefik → Frontend (for UI) or Backend (for API)
-   - Backend → MySQL (for data persistence)
+   - Backend → PostgreSQL (for data persistence)
    - Backend → Redis (for caching/sessions)
 
 3. **Development Workflow**:
@@ -105,7 +105,7 @@ graph TD
 
 - **Docker & Docker Compose**: Container orchestration
 - **Traefik v3.0**: Reverse proxy
-- **MySQL 8.0**: Relational database
+- **PostgreSQL 16**: Relational database
 - **Redis 7**: In-memory data store
 - **PHP 8.3**: Backend runtime
 - **Node.js 20**: Frontend runtime
@@ -239,9 +239,9 @@ docker-compose exec frontend npx nuxi add component MyComponent
 - **"Project not initialized"**: Wait ~15-30 seconds after first `docker-compose up`, check logs: `docker-compose logs backend` or `docker-compose logs frontend`
 - **"vendor/autoload.php not found"**: Run `docker-compose restart backend` to trigger entrypoint
 - **"node_modules missing"**: Run `docker-compose restart frontend` to trigger entrypoint
-- **Port conflicts**: Change ports in `docker-compose.yml` (default: 80, 443, 8080, 3306, 6379)
+- **Port conflicts**: Change ports in `docker-compose.yml` (default: 80, 443, 8080, 5432, 6379)
 - **Traefik not routing**: Ensure containers are running: `docker-compose ps`
-- **Database connection failed**: Check MySQL is ready: `docker-compose logs db`
+- **Database connection failed**: Check PostgreSQL is ready: `docker-compose logs db`
 
 ### Switching Laravel/Nuxt Versions
 

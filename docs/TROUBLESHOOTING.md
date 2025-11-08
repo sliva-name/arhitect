@@ -147,9 +147,9 @@ APP_KEY=
 APP_DEBUG=true
 APP_URL=http://localhost
 
-DB_CONNECTION=mysql
+DB_CONNECTION=pgsql
 DB_HOST=db
-DB_PORT=3306
+DB_PORT=5432
 DB_DATABASE=laravel
 DB_USERNAME=laravel
 DB_PASSWORD=secret
@@ -157,7 +157,7 @@ DB_PASSWORD=secret
 
 ### Database connection issues
 
-1. **Check MySQL is ready:**
+1. **Check PostgreSQL is ready:**
    ```bash
    docker-compose logs db
    ```
@@ -177,7 +177,7 @@ DB_PASSWORD=secret
 
 ## Port Conflicts
 
-If ports 80, 443, 3306, or 6379 are in use:
+If ports 80, 443, 5432, or 6379 are in use:
 
 1. Edit `infra/docker-compose.yml`
 2. Change port mappings:

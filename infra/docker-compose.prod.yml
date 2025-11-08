@@ -30,7 +30,7 @@ services:
       - APP_ENV=production
       - APP_DEBUG=false
       - DB_HOST=db
-      - DB_PORT=3306
+      - DB_PORT=5432
       - DB_DATABASE=${DB_DATABASE:-laravel}
       - DB_USERNAME=${DB_USERNAME:-laravel}
       - DB_PASSWORD=${DB_PASSWORD:-secret}
@@ -38,6 +38,33 @@ services:
     depends_on:
       - db
       - nginx-backend
+
+  db-backup:
+    image: postgres:16-alpine
+    container_name: db-backup
+    environment:
+      PGHOST: db
+      PGPORT: 5432
+      PGDATABASE: ${DB_DATABASE:-laravel}
+      PGUSER: ${DB_USERNAME:-laravel}
+      PGPASSWORD: ${DB_PASSWORD:-secret}
+      BACKUP_SCHEDULE: ${BACKUP_SCHEDULE:-0 2 * * *}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
+    volumes:
+      - ./backups:/backups
+      - ./backup-script.sh:/backup-script.sh:ro
+    networks:
+      - app-network
+    command: >
+      sh -c "
+      apk add --no-cache dcron &&
+      chmod +x /backup-script.sh &&
+      echo '${BACKUP_SCHEDULE:-0 2 * * *} /backup-script.sh >> /backups/backup.log 2>&1' | crontab - &&
+      crond -f -l 2
+      "
+    depends_on:
+      - db
+    restart: unless-stopped
 
   nginx-backend:
     image: nginx:alpine

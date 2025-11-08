@@ -41,9 +41,9 @@ APP_KEY=
 APP_DEBUG=true
 APP_URL=http://localhost
 
-DB_CONNECTION=mysql
+DB_CONNECTION=pgsql
 DB_HOST=db
-DB_PORT=3306
+DB_PORT=5432
 DB_DATABASE=laravel
 DB_USERNAME=laravel
 DB_PASSWORD=secret
@@ -181,9 +181,9 @@ APP_KEY=
 APP_DEBUG=true
 APP_URL=http://localhost
 
-DB_CONNECTION=mysql
+DB_CONNECTION=pgsql
 DB_HOST=db
-DB_PORT=3306
+DB_PORT=5432
 DB_DATABASE=laravel
 DB_USERNAME=laravel
 DB_PASSWORD=secret

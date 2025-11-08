@@ -59,17 +59,19 @@ test:unit:
   dependencies:
     - install:dependencies
   services:
-    - mysql:8.0
+    - postgres:16-alpine
   variables:
-    MYSQL_DATABASE: laravel_test
-    MYSQL_ROOT_PASSWORD: root
-    DB_HOST: mysql
+    POSTGRES_DB: laravel_test
+    POSTGRES_USER: postgres
+    POSTGRES_PASSWORD: postgres
+    DB_HOST: postgres
+    DB_CONNECTION: pgsql
     DB_DATABASE: laravel_test
-    DB_USERNAME: root
-    DB_PASSWORD: root
+    DB_USERNAME: postgres
+    DB_PASSWORD: postgres
   before_script:
-    - apt-get update && apt-get install -y libzip-dev libpng-dev libonig-dev libxml2-dev
-    - docker-php-ext-install pdo_mysql zip mbstring exif pcntl bcmath gd
+    - apt-get update && apt-get install -y libzip-dev libpng-dev libonig-dev libxml2-dev libpq-dev
+    - docker-php-ext-install pdo_pgsql pgsql zip mbstring exif pcntl bcmath gd
     # Install PCOV for code coverage
     - pecl install pcov
     - docker-php-ext-enable pcov
