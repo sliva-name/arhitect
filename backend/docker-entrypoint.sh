@@ -4,8 +4,10 @@
 USER_ID=${USER_ID:-1000}
 GROUP_ID=${GROUP_ID:-1000}
 
-# Fix ownership of /var/www/html directory
-chown -R ${USER_ID}:${GROUP_ID} /var/www/html 2>/dev/null || true
+# Fix ownership of /var/www/html directory (only if running as root)
+if [ "$(id -u)" = "0" ]; then
+    chown -R ${USER_ID}:${GROUP_ID} /var/www/html 2>/dev/null || true
+fi
 
 # Check if this is a Laravel project
 if [ ! -f "artisan" ] || [ ! -f "bootstrap/app.php" ]; then
@@ -17,8 +19,8 @@ if [ ! -f "artisan" ] || [ ! -f "bootstrap/app.php" ]; then
         find . -mindepth 1 -maxdepth 1 ! -name 'vendor' ! -name '.git' ! -name '.env' -exec rm -rf {} + 2>/dev/null || true
     fi
 
-    # Run composer as appuser if it exists, otherwise as root
-    if id -u appuser >/dev/null 2>&1; then
+    # Run composer (already running as appuser if user: appuser is set in docker-compose)
+    if [ "$(id -u)" = "0" ] && id -u appuser >/dev/null 2>&1; then
         gosu appuser composer create-project laravel/laravel /tmp/laravel --no-interaction --prefer-dist || exit 1
     else
         composer create-project laravel/laravel /tmp/laravel --no-interaction --prefer-dist || exit 1
@@ -27,6 +29,16 @@ if [ ! -f "artisan" ] || [ ! -f "bootstrap/app.php" ]; then
     # Copy Laravel files to working directory
     cp -a /tmp/laravel/. ./ || exit 1
     rm -rf /tmp/laravel
+    
+    # Ensure Laravel directories exist with correct permissions
+    if [ "$(id -u)" = "0" ]; then
+        mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs
+        mkdir -p bootstrap/cache
+        mkdir -p public/vendor
+        chown -R ${USER_ID}:${GROUP_ID} storage bootstrap/cache public/vendor 2>/dev/null || true
+        chmod -R 775 storage bootstrap/cache 2>/dev/null || true
+        chmod -R 775 public/vendor 2>/dev/null || true
+    fi
 
     # Setup environment
     if [ ! -f ".env" ]; then
@@ -49,8 +61,8 @@ DB_USERNAME=laravel
 DB_PASSWORD=secret
 EOF
         fi
-        # Run artisan as appuser if it exists, otherwise as root
-        if id -u appuser >/dev/null 2>&1; then
+        # Run artisan (already running as appuser if user: appuser is set in docker-compose)
+        if [ "$(id -u)" = "0" ] && id -u appuser >/dev/null 2>&1; then
             gosu appuser php artisan key:generate --no-interaction || exit 1
         else
             php artisan key:generate --no-interaction || exit 1
@@ -58,11 +70,21 @@ EOF
     fi
 
     # Install dev tools
-    # Run composer as appuser if it exists, otherwise as root
-    if id -u appuser >/dev/null 2>&1; then
+    # Run composer (already running as appuser if user: appuser is set in docker-compose)
+    if [ "$(id -u)" = "0" ] && id -u appuser >/dev/null 2>&1; then
         gosu appuser composer require --dev laravel/pint phpstan/phpstan nunomaduro/larastan --no-interaction || exit 1
     else
         composer require --dev laravel/pint phpstan/phpstan nunomaduro/larastan --no-interaction || exit 1
+    fi
+    
+    # Ensure directories exist and have correct permissions after installing dev tools
+    if [ "$(id -u)" = "0" ]; then
+        mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs
+        mkdir -p bootstrap/cache
+        mkdir -p public/vendor
+        chown -R ${USER_ID}:${GROUP_ID} storage bootstrap/cache public/vendor 2>/dev/null || true
+        chmod -R 775 storage bootstrap/cache 2>/dev/null || true
+        chmod -R 775 public/vendor 2>/dev/null || true
     fi
 
     # Create Pint config
@@ -146,24 +168,38 @@ EOF
 
     echo "Laravel project initialized successfully!"
 
-    # Fix ownership after initialization
-    chown -R ${USER_ID}:${GROUP_ID} /var/www/html 2>/dev/null || true
+    # Fix ownership after initialization (only if running as root)
+    if [ "$(id -u)" = "0" ]; then
+        chown -R ${USER_ID}:${GROUP_ID} /var/www/html 2>/dev/null || true
+    fi
 else
     echo "Laravel project detected, skipping initialization..."
 
     # Ensure tests/reports directory exists for existing projects
     mkdir -p tests/reports
-    chown -R ${USER_ID}:${GROUP_ID} tests/reports 2>/dev/null || true
+    if [ "$(id -u)" = "0" ]; then
+        chown -R ${USER_ID}:${GROUP_ID} tests/reports 2>/dev/null || true
+    fi
 fi
 
 # Install/update dependencies if needed
 if [ ! -d "vendor" ] || [ ! -f "vendor/autoload.php" ]; then
     echo "Installing dependencies..."
-    # Run composer as appuser if it exists, otherwise as root
-    if id -u appuser >/dev/null 2>&1; then
+    # Run composer (already running as appuser if user: appuser is set in docker-compose)
+    if [ "$(id -u)" = "0" ] && id -u appuser >/dev/null 2>&1; then
         gosu appuser composer install --no-interaction --prefer-dist || exit 1
     else
         composer install --no-interaction --prefer-dist || exit 1
+    fi
+    
+    # Ensure directories exist and have correct permissions after composer install
+    if [ "$(id -u)" = "0" ]; then
+        mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs
+        mkdir -p bootstrap/cache
+        mkdir -p public/vendor
+        chown -R ${USER_ID}:${GROUP_ID} storage bootstrap/cache public/vendor 2>/dev/null || true
+        chmod -R 775 storage bootstrap/cache 2>/dev/null || true
+        chmod -R 775 public/vendor 2>/dev/null || true
     fi
 fi
 
@@ -189,22 +225,39 @@ DB_USERNAME=laravel
 DB_PASSWORD=secret
 EOF
     fi
-    # Run artisan as appuser if it exists, otherwise as root
-    if id -u appuser >/dev/null 2>&1; then
+    # Run artisan (already running as appuser if user: appuser is set in docker-compose)
+    if [ "$(id -u)" = "0" ] && id -u appuser >/dev/null 2>&1; then
         gosu appuser php artisan key:generate --no-interaction || exit 1
     else
         php artisan key:generate --no-interaction || exit 1
     fi
 
-    # Fix ownership after .env setup
-    chown -R ${USER_ID}:${GROUP_ID} /var/www/html 2>/dev/null || true
+    # Fix ownership after .env setup (only if running as root)
+    if [ "$(id -u)" = "0" ]; then
+        chown -R ${USER_ID}:${GROUP_ID} /var/www/html 2>/dev/null || true
+    fi
 fi
 
-# Fix ownership before starting
-chown -R ${USER_ID}:${GROUP_ID} /var/www/html 2>/dev/null || true
+# Ensure Laravel directories exist and have correct permissions
+if [ "$(id -u)" = "0" ]; then
+    # Create necessary Laravel directories if they don't exist
+    mkdir -p storage/framework/cache
+    mkdir -p storage/framework/sessions
+    mkdir -p storage/framework/views
+    mkdir -p storage/logs
+    mkdir -p bootstrap/cache
+    mkdir -p public/vendor
+    
+    # Fix ownership of all files and directories
+    chown -R ${USER_ID}:${GROUP_ID} /var/www/html 2>/dev/null || true
+    
+    # Ensure directories are writable
+    chmod -R 775 storage bootstrap/cache 2>/dev/null || true
+    chmod -R 775 public/vendor 2>/dev/null || true
+fi
 
-# Switch to appuser if it exists, otherwise run as root
-if id -u appuser >/dev/null 2>&1; then
+# Switch to appuser if running as root and appuser exists, otherwise run as current user
+if [ "$(id -u)" = "0" ] && id -u appuser >/dev/null 2>&1; then
     exec gosu appuser "$@"
 else
     exec "$@"
