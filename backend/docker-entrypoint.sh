@@ -89,23 +89,29 @@ EOF
     # Create Pint config
     cat > pint.json <<'EOF'
 {
-    "preset": "laravel"
+    "preset": "psr12"
 }
 EOF
 
     # Create PHPStan config
     cat > phpstan.neon <<'EOF'
 includes:
-    - ./vendor/nunomaduro/larastan/extension.neon
+    - vendor/larastan/larastan/extension.neon
+    - vendor/nesbot/carbon/extension.neon
 
 parameters:
+
     paths:
-        - app
-        - config
-        - database
-        - routes
+        - app/
+
+    # Level 10 is the highest level
     level: 5
-    tmpDir: .phpstan-cache
+
+#    ignoreErrors:
+#        - '#PHPDoc tag @var#'
+#
+#    excludePaths:
+#        - ./*/*/FileToBeExcluded.php
 EOF
 
     # Create PHPUnit config with test reports
