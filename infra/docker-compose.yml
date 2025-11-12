@@ -28,6 +28,7 @@ services:
         - USER_ID=${USER_ID:-1000}
         - GROUP_ID=${GROUP_ID:-1000}
     container_name: backend
+    user: "${USER_ID:-1000}:${GROUP_ID:-1000}"
     working_dir: /var/www/html
     volumes:
       - ../backend:/var/www/html
@@ -59,6 +60,7 @@ services:
         - USER_ID=${USER_ID:-1000}
         - GROUP_ID=${GROUP_ID:-1000}
     container_name: frontend
+    user: "${USER_ID:-1000}:${GROUP_ID:-1000}"
     working_dir: /app
     volumes:
       - ../frontend:/app

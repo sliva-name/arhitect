@@ -29,7 +29,7 @@ if [ ! -f "artisan" ] || [ ! -f "bootstrap/app.php" ]; then
     # Copy Laravel files to working directory
     cp -a /tmp/laravel/. ./ || exit 1
     rm -rf /tmp/laravel
-    
+
     # Ensure Laravel directories exist with correct permissions
     if [ "$(id -u)" = "0" ]; then
         mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs
@@ -51,7 +51,7 @@ APP_NAME=Laravel
 APP_ENV=local
 APP_KEY=
 APP_DEBUG=true
-APP_URL=http://localhost
+APP_URL=http://api.localhost:8080
 
 DB_CONNECTION=pgsql
 DB_HOST=db
@@ -72,19 +72,18 @@ EOF
     # Install dev tools
     # Run composer (already running as appuser if user: appuser is set in docker-compose)
     if [ "$(id -u)" = "0" ] && id -u appuser >/dev/null 2>&1; then
-        gosu appuser composer require --dev laravel/pint phpstan/phpstan nunomaduro/larastan --no-interaction || exit 1
+        gosu appuser composer require --dev laravel/pint phpstan/phpstan larastan/larastan --no-interaction || exit 1
     else
-        composer require --dev laravel/pint phpstan/phpstan nunomaduro/larastan --no-interaction || exit 1
+        composer require --dev laravel/pint phpstan/phpstan larastan/larastan --no-interaction || exit 1
     fi
-    
-    # Ensure directories exist and have correct permissions after installing dev tools
-    if [ "$(id -u)" = "0" ]; then
-        mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs
-        mkdir -p bootstrap/cache
-        mkdir -p public/vendor
-        chown -R ${USER_ID}:${GROUP_ID} storage bootstrap/cache public/vendor 2>/dev/null || true
-        chmod -R 775 storage bootstrap/cache 2>/dev/null || true
-        chmod -R 775 public/vendor 2>/dev/null || true
+
+    # Create storage symlink if it doesn't exist
+    if [ ! -L "public/storage" ]; then
+        if [ "$(id -u)" = "0" ] && id -u appuser >/dev/null 2>&1; then
+            gosu appuser php artisan storage:link || true
+        else
+            php artisan storage:link || true
+        fi
     fi
 
     # Create Pint config
@@ -191,7 +190,7 @@ if [ ! -d "vendor" ] || [ ! -f "vendor/autoload.php" ]; then
     else
         composer install --no-interaction --prefer-dist || exit 1
     fi
-    
+
     # Ensure directories exist and have correct permissions after composer install
     if [ "$(id -u)" = "0" ]; then
         mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs
@@ -215,7 +214,7 @@ APP_NAME=Laravel
 APP_ENV=local
 APP_KEY=
 APP_DEBUG=true
-APP_URL=http://localhost
+APP_URL=http://api.localhost:8080
 
 DB_CONNECTION=pgsql
 DB_HOST=db
@@ -247,10 +246,10 @@ if [ "$(id -u)" = "0" ]; then
     mkdir -p storage/logs
     mkdir -p bootstrap/cache
     mkdir -p public/vendor
-    
+
     # Fix ownership of all files and directories
     chown -R ${USER_ID}:${GROUP_ID} /var/www/html 2>/dev/null || true
-    
+
     # Ensure directories are writable
     chmod -R 775 storage bootstrap/cache 2>/dev/null || true
     chmod -R 775 public/vendor 2>/dev/null || true
