@@ -1,0 +1,35 @@
+# Normalize line endings: always LF in the repo (critical for shell scripts on Linux/WSL)
+* text=auto eol=lf
+
+# Shell scripts — must be LF or shebang fails with "required file not found"
+*.sh text eol=lf
+*.bash text eol=lf
+
+# Docker / Compose / CI
+Dockerfile* text eol=lf
+docker-compose*.yml text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# Common text sources
+*.md text eol=lf
+*.json text eol=lf
+*.env* text eol=lf
+*.conf text eol=lf
+*.ini text eol=lf
+*.bat text eol=crlf
+
+# Binaries
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.zip binary
+*.gz binary
+*.tar binary
