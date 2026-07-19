@@ -41,6 +41,8 @@ services:
       - YOOKASSA_SHOP_ID=${YOOKASSA_SHOP_ID}
       - YOOKASSA_SECRET_KEY=${YOOKASSA_SECRET_KEY}
       - YOOKASSA_RETURN_URL=${YOOKASSA_RETURN_URL}
+      - YOOKASSA_WEBHOOK_VERIFY_IP=${YOOKASSA_WEBHOOK_VERIFY_IP:-true}
+      - YOOKASSA_SANDBOX_ENABLED=${YOOKASSA_SANDBOX_ENABLED:-false}
     labels: []  # Labels moved to nginx-backend
     depends_on:
       - db

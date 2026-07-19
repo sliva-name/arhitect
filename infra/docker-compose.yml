@@ -49,11 +49,14 @@ services:
       - MEILISEARCH_KEY=${MEILI_MASTER_KEY:-masterKey}
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:8080}
       - SESSION_DOMAIN=
-      - SANCTUM_STATEFUL_DOMAINS=localhost,localhost:8080,localhost:3000,127.0.0.1,127.0.0.1:8080,api.localhost,api.localhost:8080
+      - SANCTUM_STATEFUL_DOMAINS=localhost,localhost:8080,localhost:3000,127.0.0.1,127.0.0.1:8080
       - CORS_ALLOWED_ORIGINS=http://localhost:8080,http://localhost,http://127.0.0.1:8080
       - YOOKASSA_SHOP_ID=${YOOKASSA_SHOP_ID:-}
       - YOOKASSA_SECRET_KEY=${YOOKASSA_SECRET_KEY:-}
       - YOOKASSA_RETURN_URL=${YOOKASSA_RETURN_URL:-http://localhost:8080/checkout/success}
+      - YOOKASSA_WEBHOOK_VERIFY_IP=${YOOKASSA_WEBHOOK_VERIFY_IP:-false}
+      - YOOKASSA_SANDBOX_ENABLED=${YOOKASSA_SANDBOX_ENABLED:-true}
+      - QUEUE_CONNECTION=${QUEUE_CONNECTION:-sync}
       - USER_ID=${USER_ID:-1000}
       - GROUP_ID=${GROUP_ID:-1000}
     labels:
@@ -90,7 +93,8 @@ services:
     environment:
       - USER_ID=${USER_ID:-1000}
       - GROUP_ID=${GROUP_ID:-1000}
-      - NUXT_PUBLIC_API_BASE=${NUXT_PUBLIC_API_BASE:-http://api.localhost:8080}
+      - NUXT_PUBLIC_API_BASE=${NUXT_PUBLIC_API_BASE:-}
+      - NUXT_API_INTERNAL=${NUXT_API_INTERNAL:-http://backend:8000}
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.frontend.rule=Host(`localhost`)"
