@@ -59,7 +59,7 @@ test:unit:
   dependencies:
     - install:dependencies
   services:
-    - postgres:17-alpine
+    - postgres:18-alpine
   variables:
     POSTGRES_DB: laravel_test
     POSTGRES_USER: postgres
