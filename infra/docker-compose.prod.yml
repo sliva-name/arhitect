@@ -35,10 +35,17 @@ services:
       - DB_DATABASE=${DB_DATABASE:-laravel}
       - DB_USERNAME=${DB_USERNAME:-laravel}
       - DB_PASSWORD=${DB_PASSWORD:-secret}
+      - SCOUT_DRIVER=meilisearch
+      - MEILISEARCH_HOST=http://meilisearch:7700
+      - MEILISEARCH_KEY=${MEILI_MASTER_KEY}
+      - YOOKASSA_SHOP_ID=${YOOKASSA_SHOP_ID}
+      - YOOKASSA_SECRET_KEY=${YOOKASSA_SECRET_KEY}
+      - YOOKASSA_RETURN_URL=${YOOKASSA_RETURN_URL}
     labels: []  # Labels moved to nginx-backend
     depends_on:
       - db
       - nginx-backend
+      - meilisearch
 
   db-backup:
     image: postgres:18-alpine
@@ -106,5 +113,11 @@ services:
     ports: []  # Remove public port exposure for production
 
   redis:
+    ports: []  # Remove public port exposure for production
+
+  meilisearch:
+    environment:
+      MEILI_ENV: production
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY}
     ports: []  # Remove public port exposure for production
 

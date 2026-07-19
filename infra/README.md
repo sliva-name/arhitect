@@ -17,7 +17,7 @@ chmod +x init.sh
 
 1. **Environment Setup**: Creates `.env` file in `infra/` directory
 2. **Docker Build**: Builds all necessary containers
-3. **Services Start**: Starts Traefik, PostgreSQL, and Redis
+3. **Services Start**: Starts Traefik, PostgreSQL, Redis, and Meilisearch
 4. **Backend Init**: Initializes a fresh Laravel project (if not exists)
 5. **Frontend Init**: Initializes a fresh Nuxt project (if not exists)
 
@@ -49,6 +49,9 @@ docker-compose exec frontend npm install
 - **Traefik Dashboard**: http://localhost:8080
 - **PostgreSQL**: localhost:5432 (user: laravel, password: secret, database: laravel)
 - **Redis**: localhost:6379
+- **Meilisearch**: http://localhost:7700 (master key: `MEILI_MASTER_KEY` from `.env`; used by Laravel Scout)
+- **Admin (MoonShine)**: http://api.localhost:8080/admin (default user from `php artisan moonshine:user`)
+- **Storefront**: http://localhost:8080
 
 ## Useful Commands
 

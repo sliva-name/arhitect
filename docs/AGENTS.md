@@ -50,12 +50,14 @@ graph TD
     A --> C[Backend - Laravel Auto-Init]
     C --> D[PostgreSQL Database]
     C --> E[Redis Cache]
+    C --> F[Meilisearch]
     
     style A fill:#f9f,stroke:#333,stroke-width:2px
     style B fill:#bbf,stroke:#333,stroke-width:2px
     style C fill:#bfb,stroke:#333,stroke-width:2px
     style D fill:#fbb,stroke:#333,stroke-width:2px
     style E fill:#fdb,stroke:#333,stroke-width:2px
+    style F fill:#fbf,stroke:#333,stroke-width:2px
 ```
 
 - **Traefik**: Reverse proxy and load balancer
@@ -68,14 +70,28 @@ graph TD
   - Auto-initializes on first `docker-compose up`
   - PHP 8.3 with necessary extensions
   - Automatically installs Pint + PHPStan on init
-  - **Important**: Laravel project files are NOT tracked in git by default
+  - Laravel Scout + Meilisearch PHP SDK for full-text search
+  - **Important**: App code is tracked in a nested `backend/.git` repo; root git keeps infra only
 
 - **Frontend (Nuxt - Auto-initialized)**: Vue.js framework
   - Located in `/frontend` (empty initially)
   - Auto-initializes on first `docker-compose up`
   - Node.js 20 Alpine
   - Latest Nuxt version via `npx nuxi`
-  - **Important**: Nuxt project files are NOT tracked in git by default
+  - **Important**: App code is tracked in a nested `frontend/.git` repo; root git keeps infra only
+
+- **Meilisearch**: Search engine for Laravel Scout
+  - Service `meilisearch` on port `7700` (dev)
+  - Backend connects via `MEILISEARCH_HOST=http://meilisearch:7700`
+  - Master key from `MEILI_MASTER_KEY` in `infra/.env`
+
+- **MoonShine**: Admin panel at `/admin` on the backend host
+  - Resources: categories, products, images, orders, payments
+  - Create admin: `docker-compose exec backend php artisan moonshine:user`
+
+- **Store MVP**: Nuxt storefront + Laravel API
+  - Catalog/search/cart/checkout, Sanctum SPA auth, YooKassa (sandbox if credentials empty)
+  - Frontend API base: `NUXT_PUBLIC_API_BASE`
 
 - **Infrastructure**: Docker Compose orchestration
   - Located in `/infra`
@@ -95,6 +111,7 @@ graph TD
    - Browser → Traefik → Frontend (for UI) or Backend (for API)
    - Backend → PostgreSQL (for data persistence)
    - Backend → Redis (for caching/sessions)
+   - Backend → Meilisearch (for Scout full-text search)
 
 3. **Development Workflow**:
    - Code changes → Hot reload (both frontend and backend)
@@ -107,6 +124,7 @@ graph TD
 - **Traefik v3.0**: Reverse proxy
 - **PostgreSQL 16**: Relational database
 - **Redis 7**: In-memory data store
+- **Meilisearch**: Full-text search (Laravel Scout driver)
 - **PHP 8.3**: Backend runtime
 - **Node.js 20**: Frontend runtime
 
