@@ -19,12 +19,16 @@ if [ ! -f "nuxt.config.ts" ] && [ ! -f "nuxt.config.js" ] && [ ! -f "nuxt.config
     
     # Initialize Nuxt project directly in current directory
     # Note: nuxi init may return non-zero even on success, so we check files instead
+    # Non-interactive terminals require --template, --packageManager, and --gitInit
     echo "Running nuxi init..."
+    NUXI_INIT_ARGS=". --force --no-install --template=minimal --packageManager=npm --gitInit=false"
     # Run as appuser if it exists, otherwise as root
     if id -u appuser >/dev/null 2>&1; then
-        su-exec appuser npx nuxi@latest init . --no-install --force 2>&1 || true
+        # shellcheck disable=SC2086
+        su-exec appuser npx nuxi@latest init $NUXI_INIT_ARGS 2>&1 || true
     else
-        npx nuxi@latest init . --no-install --force 2>&1 || true
+        # shellcheck disable=SC2086
+        npx nuxi@latest init $NUXI_INIT_ARGS 2>&1 || true
     fi
     
     # Verify that nuxt.config was created

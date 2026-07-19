@@ -6,7 +6,7 @@ stages:
   - build
 
 variables:
-  PHP_VERSION: "8.3"
+  PHP_VERSION: "8.4"
   COMPOSER_CACHE_DIR: "$CI_PROJECT_DIR/.composer-cache"
 
 cache:
@@ -59,7 +59,7 @@ test:unit:
   dependencies:
     - install:dependencies
   services:
-    - postgres:16-alpine
+    - postgres:17-alpine
   variables:
     POSTGRES_DB: laravel_test
     POSTGRES_USER: postgres
