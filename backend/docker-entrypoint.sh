@@ -4,6 +4,81 @@
 USER_ID=${USER_ID:-1000}
 GROUP_ID=${GROUP_ID:-1000}
 
+# Set or replace a KEY=value in .env (handles commented Laravel defaults like "# DB_HOST=")
+set_env() {
+    key="$1"
+    value="$2"
+    if [ ! -f .env ]; then
+        return 1
+    fi
+    if grep -qE "^#?[[:space:]]*${key}=" .env; then
+        sed -i "s|^#[[:space:]]*${key}=.*|${key}=${value}|; s|^${key}=.*|${key}=${value}|" .env
+    else
+        printf '%s=%s\n' "$key" "$value" >> .env
+    fi
+}
+
+run_artisan() {
+    if [ "$(id -u)" = "0" ] && id -u appuser >/dev/null 2>&1; then
+        gosu appuser php artisan "$@"
+    else
+        php artisan "$@"
+    fi
+}
+
+configure_docker_env() {
+    echo "Configuring .env for Docker (PostgreSQL/Redis)..."
+    set_env APP_URL "${APP_URL:-http://api.localhost:8080}"
+    set_env DB_CONNECTION "${DB_CONNECTION:-pgsql}"
+    set_env DB_HOST "${DB_HOST:-db}"
+    set_env DB_PORT "${DB_PORT:-5432}"
+    set_env DB_DATABASE "${DB_DATABASE:-laravel}"
+    set_env DB_USERNAME "${DB_USERNAME:-laravel}"
+    set_env DB_PASSWORD "${DB_PASSWORD:-secret}"
+    set_env REDIS_HOST "${REDIS_HOST:-redis}"
+    set_env REDIS_PORT "${REDIS_PORT:-6379}"
+}
+
+wait_for_database() {
+    echo "Waiting for database..."
+    i=0
+    while [ "$i" -lt 30 ]; do
+        if run_artisan db:show --database=pgsql >/dev/null 2>&1; then
+            echo "Database is ready."
+            return 0
+        fi
+        # Fallback: PDO connect without relying on artisan db:show
+        if php -r "
+            try {
+                new PDO(
+                    sprintf('pgsql:host=%s;port=%s;dbname=%s', getenv('DB_HOST') ?: 'db', getenv('DB_PORT') ?: '5432', getenv('DB_DATABASE') ?: 'laravel'),
+                    getenv('DB_USERNAME') ?: 'laravel',
+                    getenv('DB_PASSWORD') ?: 'secret'
+                );
+                exit(0);
+            } catch (Throwable \$e) {
+                exit(1);
+            }
+        " 2>/dev/null; then
+            echo "Database is ready."
+            return 0
+        fi
+        i=$((i + 1))
+        sleep 2
+    done
+    echo "ERROR: database did not become ready in time"
+    return 1
+}
+
+run_migrations() {
+    echo "Running database migrations..."
+    if ! run_artisan migrate --force --no-interaction; then
+        echo "ERROR: migrations failed"
+        return 1
+    fi
+    echo "Migrations completed."
+}
+
 # Fix ownership of /var/www/html directory (only if running as root)
 if [ "$(id -u)" = "0" ]; then
     chown -R ${USER_ID}:${GROUP_ID} /var/www/html 2>/dev/null || true
@@ -59,14 +134,15 @@ DB_PORT=5432
 DB_DATABASE=laravel
 DB_USERNAME=laravel
 DB_PASSWORD=secret
+
+REDIS_HOST=redis
+REDIS_PORT=6379
 EOF
         fi
-        # Run artisan (already running as appuser if user: appuser is set in docker-compose)
-        if [ "$(id -u)" = "0" ] && id -u appuser >/dev/null 2>&1; then
-            gosu appuser php artisan key:generate --no-interaction || exit 1
-        else
-            php artisan key:generate --no-interaction || exit 1
-        fi
+        configure_docker_env
+        run_artisan key:generate --no-interaction || exit 1
+    else
+        configure_docker_env
     fi
 
     # Install dev tools
@@ -79,11 +155,7 @@ EOF
 
     # Create storage symlink if it doesn't exist
     if [ ! -L "public/storage" ]; then
-        if [ "$(id -u)" = "0" ] && id -u appuser >/dev/null 2>&1; then
-            gosu appuser php artisan storage:link || true
-        else
-            php artisan storage:link || true
-        fi
+        run_artisan storage:link || true
     fi
 
     # Create Pint config
@@ -208,13 +280,12 @@ if [ ! -d "vendor" ] || [ ! -f "vendor/autoload.php" ]; then
     fi
 fi
 
-# Ensure .env exists
+# Ensure .env exists and points at Docker services
 if [ ! -f ".env" ]; then
     echo "Setting up environment..."
     if [ -f ".env.example" ]; then
         cp .env.example .env || exit 1
     else
-        # Fallback: create minimal .env
         cat > .env <<'EOF'
 APP_NAME=Laravel
 APP_ENV=local
@@ -228,19 +299,24 @@ DB_PORT=5432
 DB_DATABASE=laravel
 DB_USERNAME=laravel
 DB_PASSWORD=secret
+
+REDIS_HOST=redis
+REDIS_PORT=6379
 EOF
     fi
-    # Run artisan (already running as appuser if user: appuser is set in docker-compose)
-    if [ "$(id -u)" = "0" ] && id -u appuser >/dev/null 2>&1; then
-        gosu appuser php artisan key:generate --no-interaction || exit 1
-    else
-        php artisan key:generate --no-interaction || exit 1
-    fi
+    configure_docker_env
+    run_artisan key:generate --no-interaction || exit 1
 
-    # Fix ownership after .env setup (only if running as root)
     if [ "$(id -u)" = "0" ]; then
         chown -R ${USER_ID}:${GROUP_ID} /var/www/html 2>/dev/null || true
     fi
+else
+    configure_docker_env
+fi
+
+# Ensure APP_KEY exists
+if ! grep -qE '^APP_KEY=base64:' .env; then
+    run_artisan key:generate --no-interaction || exit 1
 fi
 
 # Ensure Laravel directories exist and have correct permissions
@@ -260,6 +336,10 @@ if [ "$(id -u)" = "0" ]; then
     chmod -R 775 storage bootstrap/cache 2>/dev/null || true
     chmod -R 775 public/vendor 2>/dev/null || true
 fi
+
+# Wait for Postgres, then migrate
+wait_for_database || exit 1
+run_migrations || exit 1
 
 # Switch to appuser if running as root and appuser exists, otherwise run as current user
 if [ "$(id -u)" = "0" ] && id -u appuser >/dev/null 2>&1; then
