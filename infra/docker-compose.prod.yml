@@ -43,11 +43,41 @@ services:
       - YOOKASSA_RETURN_URL=${YOOKASSA_RETURN_URL}
       - YOOKASSA_WEBHOOK_VERIFY_IP=${YOOKASSA_WEBHOOK_VERIFY_IP:-true}
       - YOOKASSA_SANDBOX_ENABLED=${YOOKASSA_SANDBOX_ENABLED:-false}
+      - QUEUE_CONNECTION=${QUEUE_CONNECTION:-redis}
+      - CACHE_STORE=${CACHE_STORE:-redis}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     labels: []  # Labels moved to nginx-backend
     depends_on:
       - db
       - nginx-backend
       - meilisearch
+      - redis
+
+  horizon:
+    build:
+      dockerfile: Dockerfile.prod
+    volumes: []
+    command: php artisan horizon
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - DB_CONNECTION=pgsql
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_DATABASE=${DB_DATABASE:-laravel}
+      - DB_USERNAME=${DB_USERNAME:-laravel}
+      - DB_PASSWORD=${DB_PASSWORD:-secret}
+      - QUEUE_CONNECTION=${QUEUE_CONNECTION:-redis}
+      - CACHE_STORE=${CACHE_STORE:-redis}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_CLIENT=${REDIS_CLIENT:-predis}
+    depends_on:
+      - db
+      - redis
+      - backend
+    restart: unless-stopped
 
   db-backup:
     image: postgres:18-alpine

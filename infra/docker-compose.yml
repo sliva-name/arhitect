@@ -44,6 +44,7 @@ services:
       - DB_PASSWORD=${DB_PASSWORD:-secret}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - REDIS_CLIENT=${REDIS_CLIENT:-predis}
       - SCOUT_DRIVER=meilisearch
       - MEILISEARCH_HOST=http://meilisearch:7700
       - MEILISEARCH_KEY=${MEILI_MASTER_KEY:-masterKey}
@@ -56,7 +57,8 @@ services:
       - YOOKASSA_RETURN_URL=${YOOKASSA_RETURN_URL:-http://localhost:8080/checkout/success}
       - YOOKASSA_WEBHOOK_VERIFY_IP=${YOOKASSA_WEBHOOK_VERIFY_IP:-false}
       - YOOKASSA_SANDBOX_ENABLED=${YOOKASSA_SANDBOX_ENABLED:-true}
-      - QUEUE_CONNECTION=${QUEUE_CONNECTION:-sync}
+      - QUEUE_CONNECTION=${QUEUE_CONNECTION:-redis}
+      - CACHE_STORE=${CACHE_STORE:-redis}
       - USER_ID=${USER_ID:-1000}
       - GROUP_ID=${GROUP_ID:-1000}
     labels:
@@ -71,6 +73,49 @@ services:
         condition: service_started
       meilisearch:
         condition: service_healthy
+    restart: unless-stopped
+
+  horizon:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+      args:
+        - USER_ID=${USER_ID:-1000}
+        - GROUP_ID=${GROUP_ID:-1000}
+    container_name: horizon
+    user: "${USER_ID:-1000}:${GROUP_ID:-1000}"
+    working_dir: /var/www/html
+    command: php artisan horizon
+    volumes:
+      - ../backend:/var/www/html
+    networks:
+      - app-network
+    environment:
+      - APP_URL=http://api.localhost:8080
+      - APP_ENV=${APP_ENV:-local}
+      - DB_CONNECTION=pgsql
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_DATABASE=${DB_DATABASE:-laravel}
+      - DB_USERNAME=${DB_USERNAME:-laravel}
+      - DB_PASSWORD=${DB_PASSWORD:-secret}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_CLIENT=${REDIS_CLIENT:-predis}
+      - QUEUE_CONNECTION=${QUEUE_CONNECTION:-redis}
+      - CACHE_STORE=${CACHE_STORE:-redis}
+      - SCOUT_DRIVER=meilisearch
+      - MEILISEARCH_HOST=http://meilisearch:7700
+      - MEILISEARCH_KEY=${MEILI_MASTER_KEY:-masterKey}
+      - USER_ID=${USER_ID:-1000}
+      - GROUP_ID=${GROUP_ID:-1000}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      backend:
+        condition: service_started
     restart: unless-stopped
 
   frontend:
